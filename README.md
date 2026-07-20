@@ -11,8 +11,6 @@
 ![Runs offline](https://img.shields.io/badge/works-offline-success)
 ![Made for the lab](https://img.shields.io/badge/for-research-8a5cf6)
 
-*A tool by Alexia Rottensteiner.*
-
 </div>
 
 ---
