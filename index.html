@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="Alexia Rottensteiner">
+<meta name="application-name" content="LabTrack">
+<meta name="description" content="LabTrack — an experiment progress tracker. A tool by Alexia Rottensteiner.">
+<!-- LabTrack · a tool by Alexia Rottensteiner -->
+<title>LabTrack</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#171b21; --panel-2:#1e242c; --line:#2a323d;
+    --text:#e6eaf0; --muted:#8b95a4; --accent:#5b8cff; --accent-soft:#233a6b;
+    --green:#3ecf8e; --green-soft:#12321f; --red:#ff6b6b; --red-soft:#3a1a1a;
+    --amber:#f5b83d; --radius:12px; --shadow:0 8px 30px rgba(0,0,0,.35);
+  }
+  [data-theme="light"]{
+    --bg:#f4f6fa; --panel:#ffffff; --panel-2:#f0f3f8; --line:#dce2ec;
+    --text:#1a2230; --muted:#5b6675; --accent:#2f6bff; --accent-soft:#dbe6ff;
+    --green:#12a55f; --green-soft:#d9f5e6; --red:#dc3545; --red-soft:#fbe0e2;
+    --amber:#c98a00; --shadow:0 8px 30px rgba(20,40,80,.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); font-size:14px; line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit; cursor:pointer;}
+  .app{display:flex; flex-direction:column; height:100vh;}
+
+  /* Top bar */
+  .topbar{
+    display:flex; align-items:center; gap:14px; padding:12px 18px;
+    background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:16px; letter-spacing:.2px;}
+  .brand .logo{display:inline-block; vertical-align:middle; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.28);}
+  .proj-select{display:flex; align-items:center; gap:8px;}
+  select,input[type="text"]{
+    background:var(--panel-2); color:var(--text); border:1px solid var(--line);
+    border-radius:9px; padding:8px 10px; font-size:14px; outline:none;
+  }
+  select:focus,input[type="text"]:focus{border-color:var(--accent);}
+  .spacer{flex:1;}
+  .btn{
+    background:var(--panel-2); color:var(--text); border:1px solid var(--line);
+    border-radius:9px; padding:8px 13px; font-size:13px; font-weight:600;
+    display:inline-flex; align-items:center; gap:6px; transition:.15s; white-space:nowrap;
+  }
+  .btn:hover{border-color:var(--accent); background:var(--accent-soft);}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .btn.primary:hover{filter:brightness(1.08);}
+  .btn.ghost{background:transparent;}
+  .btn.danger:hover{border-color:var(--red); background:var(--red-soft); color:var(--red);}
+  .btn.danger-solid{background:var(--red); border-color:var(--red); color:#fff;}
+  .btn.danger-solid:hover{filter:brightness(1.08);}
+  .icon-btn{padding:8px 10px;}
+
+  /* Layout */
+  .body{display:flex; flex:1; min-height:0;}
+  .main{flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden;}
+  .toolbar{
+    display:flex; align-items:center; gap:12px; padding:12px 18px;
+    border-bottom:1px solid var(--line); flex-wrap:wrap; background:var(--bg);
+  }
+  .toolbar .label{color:var(--muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.6px;}
+  .chip{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:20px;
+    padding:6px 12px; font-size:12px; color:var(--muted); display:inline-flex; align-items:center; gap:6px;
+  }
+  .chip b{color:var(--text);}
+
+  .table-wrap{flex:1; overflow:auto; padding:0 0 20px;}
+  .bottombar{
+    display:flex; align-items:center; gap:10px; padding:12px 18px;
+    border-top:1px solid var(--line); background:var(--panel); flex-shrink:0;
+  }
+  table{border-collapse:separate; border-spacing:0; width:max-content; min-width:100%;}
+  th,td{border-bottom:1px solid var(--line); padding:0; text-align:center;}
+  thead th{
+    position:sticky; top:0; z-index:5; background:var(--panel);
+    font-size:12.5px; font-weight:700; color:var(--text);
+  }
+  .grouprow th{position:sticky; top:0; z-index:6; background:var(--panel); border-bottom:1px solid var(--line);}
+  .group-band{
+    font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted);
+    padding:6px 8px; border-left:1px solid var(--line); font-weight:700;
+  }
+  th.exp-head{vertical-align:bottom; padding:10px 8px; min-width:78px; border-left:1px solid var(--line);}
+  th.exp-head .exp-name{display:block; cursor:pointer;}
+  th.exp-head.selected{background:var(--accent-soft);}
+  th.exp-head.selected .exp-name{color:var(--accent);}
+  th.exp-head .exp-meter{
+    height:4px; border-radius:3px; background:var(--panel-2); margin-top:7px; overflow:hidden;
+  }
+  th.exp-head .exp-meter > i{display:block; height:100%; background:var(--green);}
+  th.exp-head .exp-pct{font-size:10px; color:var(--muted); font-weight:600; margin-top:3px;}
+  th.corner{
+    position:sticky; left:0; z-index:7; background:var(--panel); text-align:left;
+    padding:10px 14px; min-width:210px; border-right:1px solid var(--line);
+  }
+  .grouprow th.corner{z-index:8;}
+  td.sample-cell{
+    position:sticky; left:0; z-index:3; background:var(--panel); text-align:left;
+    padding:10px 14px; border-right:1px solid var(--line); cursor:pointer; min-width:210px;
+  }
+  tbody tr:hover td.sample-cell{background:var(--panel-2);}
+  tbody tr.selected td.sample-cell{background:var(--accent-soft);}
+  tbody tr.selected td{background:rgba(91,140,255,.06);}
+  .sample-name{font-weight:600; display:flex; align-items:center; gap:6px;}
+  .grip{color:var(--muted); cursor:grab; opacity:0; transition:.12s; font-size:13px; user-select:none; letter-spacing:-1px;}
+  tbody tr:hover .grip{opacity:.6;}
+  td.sample-cell{cursor:grab;}
+  tbody tr.dragging{opacity:.35;}
+  tbody tr.drop-above td{box-shadow:inset 0 2px 0 0 var(--accent);}
+  tbody tr.drop-below td{box-shadow:inset 0 -2px 0 0 var(--accent);}
+  .sample-sub{font-size:11px; color:var(--muted); margin-top:2px;}
+  .mini-meter{height:4px; border-radius:3px; background:var(--panel-2); margin-top:6px; width:120px; overflow:hidden;}
+  .mini-meter > i{display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--green));}
+
+  td.cell{border-left:1px solid var(--line); min-width:78px; height:46px;}
+  .cbx{
+    width:24px; height:24px; border-radius:7px; border:1.5px solid var(--line);
+    background:var(--panel-2); display:inline-flex; align-items:center; justify-content:center;
+    transition:.12s; color:transparent; font-size:15px; margin:auto;
+  }
+  .cbx:hover{border-color:var(--accent);}
+  .cbx.on{background:var(--green); border-color:var(--green); color:#04240f;}
+  .cbx.on svg{stroke:#04240f;}
+
+  .empty-state{padding:60px 20px; text-align:center; color:var(--muted);}
+  .empty-state h2{color:var(--text); font-weight:700; margin:0 0 8px;}
+  .empty-state p{max-width:460px; margin:0 auto 18px;}
+
+  /* Detail drawer */
+  .drawer{
+    width:0; overflow:hidden; background:var(--panel); border-left:1px solid var(--line);
+    transition:width .18s ease; flex-shrink:0; display:flex; flex-direction:column;
+  }
+  .drawer.open{width:340px;}
+  .drawer-inner{width:340px; padding:18px; overflow:auto; height:100%;}
+  .drawer h3{margin:0 0 2px; font-size:17px;}
+  .drawer .d-sub{color:var(--muted); font-size:12px; margin-bottom:14px;}
+  .prog-ring{display:flex; align-items:center; gap:12px; margin-bottom:16px;}
+  .prog-ring .big{font-size:26px; font-weight:800;}
+  .prog-ring .lbl{font-size:12px; color:var(--muted);}
+  .exp-list{list-style:none; margin:0; padding:0;}
+  .exp-list li{
+    display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:9px;
+    margin-bottom:6px; font-size:13.5px; border:1px solid transparent;
+  }
+  .exp-list li.have{background:var(--green-soft);}
+  .exp-list li.miss{background:var(--red-soft);}
+  .exp-list li .mk{font-weight:800; width:18px; text-align:center;}
+  .exp-list li.have .mk{color:var(--green);}
+  .exp-list li.miss .mk{color:var(--red);}
+  .exp-list li .gname{margin-left:auto; font-size:11px; color:var(--muted);}
+  .exp-list li .tog{margin-left:auto; font-size:11px; color:var(--muted); cursor:pointer; opacity:0; transition:.12s;}
+  .exp-list li:hover .tog{opacity:1;}
+  .close-x{background:transparent; border:none; color:var(--muted); font-size:20px; float:right; cursor:pointer;}
+
+  /* Modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.5); display:none;
+    align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    box-shadow:var(--shadow); width:100%; max-width:560px; max-height:85vh;
+    overflow:auto; padding:22px;
+  }
+  .modal h3{margin:0 0 14px; font-size:18px;}
+  .seg{display:flex; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:3px; gap:3px;}
+  .seg-btn{flex:1; background:transparent; border:none; color:var(--muted); font-weight:600; font-size:13px; padding:8px 10px; border-radius:8px; cursor:pointer; transition:.12s;}
+  .seg-btn.active{background:var(--accent); color:#fff;}
+  .seg-btn:not(.active):hover{color:var(--text);}
+  .about-head{display:flex; align-items:center; gap:13px; margin-bottom:14px;}
+  .about-h{font-size:13px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin:16px 0 6px;}
+  .about-list{margin:0; padding-left:20px;}
+  .about-list li{margin:5px 0; color:#d4dae3;}
+  .about-note{background:var(--green-soft); border:1px solid var(--line); border-radius:10px; padding:11px 14px; font-size:13px; margin-top:16px;}
+  .modal code{background:var(--panel-2); border:1px solid var(--line); border-radius:5px; padding:0 5px; font-size:12.5px;}
+  .modal .row{margin-bottom:12px;}
+  .modal label{display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:5px;}
+  .modal input[type="text"]{width:100%;}
+  .modal-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:18px;}
+  .hint{font-size:12px; color:var(--muted); margin-top:4px;}
+
+  /* Missing report */
+  .missing-block{margin-bottom:14px;}
+  .missing-block h4{margin:0 0 6px; font-size:14px; display:flex; align-items:center; gap:8px;}
+  .missing-block .tags{display:flex; flex-wrap:wrap; gap:6px;}
+  .tag-miss{background:var(--red-soft); color:var(--red); border-radius:6px; padding:3px 9px; font-size:12px; font-weight:600;}
+  .tag-done{background:var(--green-soft); color:var(--green); border-radius:6px; padding:3px 9px; font-size:12px; font-weight:600;}
+  .allgood{color:var(--green); font-weight:600;}
+
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--panel); border:1px solid var(--line); color:var(--text);
+    padding:11px 18px; border-radius:10px; box-shadow:var(--shadow); font-size:13px;
+    opacity:0; transition:.2s; z-index:80; pointer-events:none;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .del-col{cursor:pointer; color:var(--muted); font-size:14px; line-height:1; opacity:0; transition:.12s; display:inline-block; margin-top:2px;}
+  th.exp-head:hover .del-col{opacity:.85;}
+  .del-col:hover{opacity:1; color:var(--red);}
+  .row-del{cursor:pointer; color:var(--muted); opacity:0; transition:.12s; font-size:12px;}
+  tr:hover .row-del{opacity:.8;}
+  .row-del:hover{color:var(--red);}
+  .hidden-file{display:none;}
+  .count-pill{font-size:11px; background:var(--panel-2); border:1px solid var(--line); border-radius:20px; padding:2px 9px; color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
+        <defs><linearGradient id="npg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#4f8cff"/><stop offset="1" stop-color="#37d39a"/>
+        </linearGradient></defs>
+        <rect x="1" y="1" width="30" height="30" rx="8" fill="url(#npg)"/>
+        <g stroke="#ffffff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6.5,10.5 8.5,12.5 11.5,8"/>
+          <line x1="15" y1="10.5" x2="25" y2="10.5"/>
+          <polyline points="6.5,16.5 8.5,18.5 11.5,14"/>
+          <line x1="15" y1="16.5" x2="25" y2="16.5"/>
+          <polyline points="6.5,22.5 8.5,24.5 11.5,20"/>
+          <line x1="15" y1="22.5" x2="25" y2="22.5"/>
+        </g>
+      </svg>
+      LabTrack
+    </div>
+    <div class="proj-select">
+      <select id="projectSelect" title="Switch project"></select>
+      <button class="btn icon-btn" id="addProjectBtn" title="New project">＋</button>
+      <button class="btn icon-btn ghost" id="renameProjectBtn" title="Rename project">✎</button>
+      <button class="btn icon-btn ghost danger" id="delProjectBtn" title="Delete project">🗑</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="saveFileBtn" title="Save all your data to a file on your computer (a backup you can keep or move)">⤓ Save to file</button>
+    <button class="btn" id="loadFileBtn" title="Load your data from a previously saved file">⤒ Load file</button>
+    <input type="file" id="importFile" class="hidden-file" accept="application/json,.json">
+    <button class="btn icon-btn ghost" id="aboutBtn" title="About LabTrack — what it is & how to use it">?</button>
+    <button class="btn icon-btn ghost" id="themeBtn" title="Toggle light / dark">◐</button>
+  </div>
+
+  <div class="body">
+    <div class="main">
+      <!-- TOOLBAR -->
+      <div class="toolbar">
+        <button class="btn primary" id="addSampleBtn">＋ Sample</button>
+        <button class="btn primary" id="addExpBtn">＋ Experiment</button>
+        <span style="width:1px;height:22px;background:var(--line);"></span>
+        <span class="label">Show</span>
+        <select id="filterSelect" title="Show only one experiment / group"></select>
+        <div class="spacer"></div>
+        <span class="chip">Samples <b id="statSamples">0</b></span>
+        <span class="chip">Experiments <b id="statExps">0</b></span>
+        <span class="chip">Complete <b id="statPct">0%</b></span>
+      </div>
+
+      <!-- TABLE -->
+      <div class="table-wrap" id="tableWrap">
+        <div class="empty-state" id="emptyState" style="display:none;">
+          <h2>No experiments yet</h2>
+          <p>Add your first <b>experiment</b> (a column, e.g. caDNAno design) and a <b>sample</b> (a row). Then tick the boxes as you collect data.</p>
+          <div style="display:flex;gap:10px;justify-content:center;">
+            <button class="btn primary" id="emptyAddExp">＋ Add experiment</button>
+            <button class="btn" id="emptyAddSample">＋ Add sample</button>
+          </div>
+        </div>
+        <table id="grid"></table>
+      </div>
+
+      <!-- BOTTOM ACTION BAR -->
+      <div class="bottombar">
+        <button class="btn primary" id="missingBtn">⚠ What's missing</button>
+        <div class="spacer"></div>
+        <button class="btn primary" id="excelBtn" title="Download an Excel spreadsheet (x = data collected, blank = still needed)">⤓ Download Excel</button>
+      </div>
+    </div>
+
+    <!-- DETAIL DRAWER -->
+    <div class="drawer" id="drawer">
+      <div class="drawer-inner" id="drawerInner"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ------------------------------------------------------------------ *
+ *  LabTrack — a tool by Alexia Rottensteiner                        *
+ *  Single-file, offline, auto-saving experiment progress tracker.     *
+ * ------------------------------------------------------------------ */
+const AUTHOR = "Alexia Rottensteiner";  // LabTrack — a tool by Alexia Rottensteiner
+const APP_VERSION = "1.0";
+const STORE_KEY = "experiment-tracker-v1";
+const uid = () => Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3);
+
+/* ---------- State ---------- */
+let db = load();               // { projects:[], activeId, theme }
+let selectedSampleId = null;   // for the drawer (sample detail)
+let selectedExpId = null;      // for the drawer (experiment detail)
+let filter = "__all__";        // "__all__" | "grp::<name>" | exp id
+
+function blankProject(name){
+  return { id: uid(), name: name || "New Project", samples: [], experiments: [], data:{} };
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){ const d = JSON.parse(raw); if(d && d.projects) return d; }
+  }catch(e){}
+  const p = blankProject("My Project");
+  return { projects:[p], activeId:p.id, theme:"dark" };
+}
+function save(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(db)); }
+  catch(e){ toast("⚠ Could not auto-save (storage blocked). Use Export to keep a backup."); }
+}
+function active(){ return db.projects.find(p=>p.id===db.activeId) || db.projects[0]; }
+function dataKey(sid,eid){ return sid+"|"+eid; }
+function has(p,sid,eid){ return !!p.data[dataKey(sid,eid)]; }
+function setHas(p,sid,eid,v){
+  const k=dataKey(sid,eid);
+  if(v) p.data[k]=true; else delete p.data[k];
+}
+
+/* ---------- Rendering ---------- */
+function render(){
+  applyTheme();
+  renderProjectSelect();
+  renderFilter();
+  renderTable();
+  renderStats();
+  renderDrawer();
+  save();
+}
+
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme", db.theme==="light"?"light":"dark");
+}
+
+function renderProjectSelect(){
+  const sel = document.getElementById("projectSelect");
+  sel.innerHTML = "";
+  db.projects.forEach(p=>{
+    const o=document.createElement("option");
+    o.value=p.id; o.textContent=p.name;
+    if(p.id===db.activeId) o.selected=true;
+    sel.appendChild(o);
+  });
+}
+
+function experimentGroups(p){
+  // ordered unique group names ("" = ungrouped)
+  const seen=[]; p.experiments.forEach(e=>{ const g=e.group||""; if(!seen.includes(g)) seen.push(g); });
+  return seen;
+}
+
+function renderFilter(){
+  const p=active();
+  const sel=document.getElementById("filterSelect");
+  const prev=filter;
+  sel.innerHTML="";
+  const optAll=new Option("All experiments","__all__"); sel.add(optAll);
+  // groups
+  experimentGroups(p).forEach(g=>{
+    if(g){ sel.add(new Option("Group: "+g, "grp::"+g)); }
+  });
+  // individual experiments
+  p.experiments.forEach(e=>{
+    const label = e.group ? (e.group+" › "+e.name) : e.name;
+    sel.add(new Option(label, e.id));
+  });
+  // keep previous selection if still valid
+  const valid=[...sel.options].some(o=>o.value===prev);
+  filter = valid ? prev : "__all__";
+  sel.value=filter;
+}
+
+function visibleExperiments(p){
+  if(filter==="__all__") return p.experiments;
+  if(filter.startsWith("grp::")){ const g=filter.slice(5); return p.experiments.filter(e=>(e.group||"")===g); }
+  return p.experiments.filter(e=>e.id===filter);
+}
+
+function expProgress(p,eid){
+  if(p.samples.length===0) return 0;
+  let n=0; p.samples.forEach(s=>{ if(has(p,s.id,eid)) n++; });
+  return Math.round(100*n/p.samples.length);
+}
+function sampleProgress(p,sid){
+  if(p.experiments.length===0) return 0;
+  let n=0; p.experiments.forEach(e=>{ if(has(p,sid,e.id)) n++; });
+  return Math.round(100*n/p.experiments.length);
+}
+
+const CHECK_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+function renderTable(){
+  const p=active();
+  const grid=document.getElementById("grid");
+  const wrap=document.getElementById("tableWrap");
+  const sx=wrap.scrollLeft, sy=wrap.scrollTop;   // preserve scroll across re-render
+  const empty=document.getElementById("emptyState");
+  const exps=visibleExperiments(p);
+
+  if(p.experiments.length===0 && p.samples.length===0){
+    grid.innerHTML=""; empty.style.display="block"; return;
+  }
+  empty.style.display="none";
+
+  const groups=experimentGroups(p).filter(g=>{
+    return exps.some(e=>(e.group||"")===g);
+  });
+  const showGroupRow = groups.some(g=>g!=="");
+
+  let html="";
+  // group band row
+  if(showGroupRow){
+    html+='<thead><tr class="grouprow"><th class="corner" rowspan="2"></th>';
+    groups.forEach(g=>{
+      const span=exps.filter(e=>(e.group||"")===g).length;
+      html+=`<th class="group-band" colspan="${span}">${g?esc(g):"&nbsp;"}</th>`;
+    });
+    html+='</tr><tr>';
+  }else{
+    html+='<thead><tr><th class="corner">Sample</th>';
+  }
+  // experiment header cells
+  exps.forEach(e=>{
+    const pct=expProgress(p,e.id);
+    html+=`<th class="exp-head${e.id===selectedExpId?' selected':''}" data-eid="${e.id}">
+      <span class="exp-name" title="Click to see which samples have it">${esc(e.name)}</span>
+      <span class="del-col" data-del-exp="${e.id}" title="Delete experiment">🗑</span>
+      <div class="exp-meter"><i style="width:${pct}%"></i></div>
+      <div class="exp-pct">${pct}%</div>
+    </th>`;
+  });
+  html+='</tr></thead><tbody>';
+
+  if(p.samples.length===0){
+    html+=`<tr><td class="sample-cell" colspan="1"><span class="sample-sub">No samples yet — click “＋ Sample”.</span></td>`;
+    exps.forEach(()=>html+='<td class="cell"></td>');
+    html+='</tr>';
+  }
+
+  p.samples.forEach(s=>{
+    const sp=sampleProgress(p,s.id);
+    const selCls = s.id===selectedSampleId ? " selected" : "";
+    html+=`<tr class="${selCls.trim()}" data-sid="${s.id}">
+      <td class="sample-cell" data-open="${s.id}" draggable="true">
+        <div class="sample-name"><span class="grip" title="Drag to reorder">⠿</span>${esc(s.name)} <span class="row-del" data-del-sample="${s.id}" title="Delete sample">🗑</span></div>
+        <div class="sample-sub">${sp}% complete${s.note?" · "+esc(s.note):""}</div>
+        <div class="mini-meter"><i style="width:${sp}%"></i></div>
+      </td>`;
+    exps.forEach(e=>{
+      const on=has(p,s.id,e.id);
+      html+=`<td class="cell"><div class="cbx${on?' on':''}" data-toggle="${s.id}::${e.id}" title="${esc(s.name)} — ${esc(e.name)}">${on?CHECK_SVG:''}</div></td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</tbody>';
+  grid.innerHTML=html;
+  wrap.scrollLeft=sx; wrap.scrollTop=sy;   // restore scroll
+}
+
+function renderStats(){
+  const p=active();
+  document.getElementById("statSamples").textContent=p.samples.length;
+  document.getElementById("statExps").textContent=p.experiments.length;
+  const total=p.samples.length*p.experiments.length;
+  let done=0; p.samples.forEach(s=>p.experiments.forEach(e=>{ if(has(p,s.id,e.id)) done++; }));
+  document.getElementById("statPct").textContent = total? Math.round(100*done/total)+"%" : "0%";
+}
+
+/* ---------- Drawer (sample detail) ---------- */
+function renderDrawer(){
+  const drawer=document.getElementById("drawer");
+  const inner=document.getElementById("drawerInner");
+  const p=active();
+
+  // --- Experiment detail mode ---
+  if(selectedExpId){
+    const e=p.experiments.find(x=>x.id===selectedExpId);
+    if(!e){ drawer.classList.remove("open"); inner.innerHTML=""; return; }
+    drawer.classList.add("open");
+    const pct=expProgress(p,e.id);
+    const haveCount=p.samples.filter(s=>has(p,s.id,e.id)).length;
+    let list="";
+    p.samples.forEach(s=>{
+      const on=has(p,s.id,e.id);
+      list+=`<li class="${on?'have':'miss'}">
+        <span class="mk">${on?'✓':'✕'}</span>
+        <span>${esc(s.name)}</span>
+        <span class="tog" data-toggle="${s.id}::${e.id}">${on?'mark missing':'mark done'}</span>
+      </li>`;
+    });
+    if(p.samples.length===0) list='<li class="miss"><span>No samples yet.</span></li>';
+    inner.innerHTML=`
+      <button class="close-x" id="drawerClose">×</button>
+      <h3>${esc(e.name)}</h3>
+      <div class="d-sub">${esc(p.name)}${e.group?" · "+esc(e.group):""}</div>
+      <div class="prog-ring">
+        <div class="big" style="color:${pct===100?'var(--green)':'var(--text)'}">${pct}%</div>
+        <div class="lbl">${haveCount} of ${p.samples.length}<br>samples collected</div>
+      </div>
+      <ul class="exp-list">${list}</ul>
+      <div style="margin-top:14px;display:flex;gap:8px;">
+        <button class="btn" id="editExpBtn">✎ Edit experiment</button>
+        <button class="btn" id="expMissingBtn">⚠ What's missing</button>
+      </div>`;
+    return;
+  }
+
+  // --- Sample detail mode ---
+  const s=p.samples.find(x=>x.id===selectedSampleId);
+  if(!s){ drawer.classList.remove("open"); inner.innerHTML=""; return; }
+  drawer.classList.add("open");
+  const pct=sampleProgress(p,s.id);
+  const haveCount=p.experiments.filter(e=>has(p,s.id,e.id)).length;
+
+  let list="";
+  p.experiments.forEach(e=>{
+    const on=has(p,s.id,e.id);
+    list+=`<li class="${on?'have':'miss'}">
+      <span class="mk">${on?'✓':'✕'}</span>
+      <span>${esc(e.name)}</span>
+      ${e.group?`<span class="gname">${esc(e.group)}</span>`:''}
+      <span class="tog" data-toggle="${s.id}::${e.id}">${on?'mark missing':'mark done'}</span>
+    </li>`;
+  });
+  if(p.experiments.length===0) list='<li class="miss"><span>No experiments defined yet.</span></li>';
+
+  inner.innerHTML=`
+    <button class="close-x" id="drawerClose">×</button>
+    <h3>${esc(s.name)}</h3>
+    <div class="d-sub">${esc(p.name)}${s.note?" · "+esc(s.note):""}</div>
+    <div class="prog-ring">
+      <div class="big" style="color:${pct===100?'var(--green)':'var(--text)'}">${pct}%</div>
+      <div class="lbl">${haveCount} of ${p.experiments.length}<br>experiments collected</div>
+    </div>
+    <ul class="exp-list">${list}</ul>
+    <div style="margin-top:14px;display:flex;gap:8px;">
+      <button class="btn" id="editSampleBtn">✎ Edit sample</button>
+      <button class="btn" id="sampleMissingBtn">⚠ What's missing</button>
+    </div>`;
+}
+
+/* ---------- What's missing report ----------
+ * Unified modal with a "By sample" / "By experiment" toggle. */
+function sampleBlock(p,s){
+  const missing=p.experiments.filter(e=>!has(p,s.id,e.id));
+  const done=p.experiments.filter(e=>has(p,s.id,e.id));
+  let h=`<div class="missing-block">
+    <h4>${esc(s.name)} <span class="count-pill">${done.length}/${p.experiments.length} done</span></h4>`;
+  h += missing.length===0
+    ? '<div class="allgood">✓ Complete, nothing missing.</div>'
+    : '<div class="tags">'+missing.map(e=>`<span class="tag-miss">✕ ${esc(e.name)}</span>`).join("")+'</div>';
+  return h+'</div>';
+}
+function experimentBlock(p,e){
+  // "constructs" = samples: how many samples have this experiment
+  const missing=p.samples.filter(s=>!has(p,s.id,e.id));
+  const done=p.samples.filter(s=>has(p,s.id,e.id));
+  let h=`<div class="missing-block">
+    <h4>${esc(e.name)} <span class="count-pill">${done.length}/${p.samples.length} done</span></h4>`;
+  h += missing.length===0
+    ? '<div class="allgood">✓ Complete, every sample has it.</div>'
+    : '<div class="tags">'+missing.map(s=>`<span class="tag-miss">✕ ${esc(s.name)}</span>`).join("")+'</div>';
+  return h+'</div>';
+}
+
+function openMissingReport(defaultTab){
+  const p=active();
+  let tab = defaultTab==='exp' ? 'exp' : 'sample';
+
+  function build(){
+    let body="";
+    if(p.experiments.length===0 || p.samples.length===0){
+      body='<p class="hint">Add at least one sample and one experiment first.</p>';
+    }else if(tab==='sample'){
+      p.samples.forEach(s=> body+=sampleBlock(p,s));
+    }else{
+      p.experiments.forEach(e=> body+=experimentBlock(p,e));
+    }
+    openModal(`
+      <h3>⚠ What's missing ${esc(p.name)} project</h3>
+      <div class="seg">
+        <button class="seg-btn ${tab==='sample'?'active':''}" data-tab="sample">By sample</button>
+        <button class="seg-btn ${tab==='exp'?'active':''}" data-tab="exp">By experiment</button>
+      </div>
+      <div style="max-height:52vh;overflow:auto;margin:10px 0 6px;">${body}</div>
+      <div class="modal-actions">
+        <button class="btn primary" data-close>Done</button>
+      </div>
+    `);
+    document.querySelectorAll(".seg-btn").forEach(bn=> bn.onclick=()=>{ tab=bn.getAttribute("data-tab"); build(); });
+  }
+  build();
+}
+
+/* ---------- About / How it works ---------- */
+function openAbout(){
+  openModal(`
+    <div class="about-head">
+      <svg viewBox="0 0 32 32" width="40" height="40" aria-hidden="true" style="border-radius:9px;flex-shrink:0;">
+        <defs><linearGradient id="ag" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f8cff"/><stop offset="1" stop-color="#37d39a"/></linearGradient></defs>
+        <rect x="1" y="1" width="30" height="30" rx="8" fill="url(#ag)"/>
+        <g stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6.5,10.5 8.5,12.5 11.5,8"/><line x1="15" y1="10.5" x2="25" y2="10.5"/>
+          <polyline points="6.5,16.5 8.5,18.5 11.5,14"/><line x1="15" y1="16.5" x2="25" y2="16.5"/>
+          <polyline points="6.5,22.5 8.5,24.5 11.5,20"/><line x1="15" y1="22.5" x2="25" y2="22.5"/>
+        </g>
+      </svg>
+      <div>
+        <h3 style="margin:0;">LabTrack</h3>
+        <div style="color:var(--muted);font-size:12.5px;">Experiment progress tracker · a tool by ${esc(AUTHOR)}</div>
+      </div>
+    </div>
+    <p>Keep track of which experiments you've collected for each sample in a project. <b>Samples are rows</b>, <b>experiments are columns</b> — tick a box once you have that data. Everything updates live so you can see at a glance what's done and what's still needed.</p>
+    <h4 class="about-h">Quick start</h4>
+    <ol class="about-list">
+      <li>Use <b>＋ Experiment</b> to add columns (e.g. caDNAno design, DLS, Gel, TEM) and <b>＋ Sample</b> to add rows.</li>
+      <li>Click a cell to tick it green when the data is collected.</li>
+      <li>Click a <b>sample</b> or an <b>experiment</b> to open a panel showing what's done (✓) and missing (✕).</li>
+      <li>Use <b>Show</b> to filter to one experiment, and drag sample rows to reorder them.</li>
+    </ol>
+    <h4 class="about-h">Tools</h4>
+    <ul class="about-list">
+      <li><b>⚠ What's missing</b> — a full report, switchable between <i>by sample</i> and <i>by experiment</i>.</li>
+      <li><b>⤓ Download Excel</b> — a spreadsheet where <code>x</code> means collected and blank means still needed.</li>
+      <li><b>⤓ Save to file / ⤒ Load file</b> — keep a backup of all your data, or move it to another computer.</li>
+    </ul>
+    <p class="about-note">🔒 Your data is saved automatically on <b>your own computer</b>, in your browser. Nothing is uploaded anywhere — it works fully offline.</p>
+    <div class="modal-actions" style="align-items:center;">
+      <span style="flex:1;color:var(--muted);font-size:12px;">Version ${APP_VERSION}</span>
+      <button class="btn primary" data-close>Got it</button>
+    </div>
+  `);
+}
+
+/* ---------- Modal helpers ---------- */
+function openModal(html){
+  const m=document.getElementById("modal");
+  m.innerHTML=html;
+  document.getElementById("overlay").classList.add("open");
+  m.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeModal);
+  const firstInput=m.querySelector("input[type=text]");
+  if(firstInput) setTimeout(()=>firstInput.focus(),50);
+}
+function closeModal(){ document.getElementById("overlay").classList.remove("open"); }
+
+/* Custom confirm — works even where native confirm() is suppressed (webviews/previews) */
+function confirmModal(message, onYes, opts){
+  opts=opts||{};
+  openModal(`
+    <h3>${opts.title||"Please confirm"}</h3>
+    <p style="margin:0 0 4px;color:var(--muted);">${esc(message)}</p>
+    <div class="modal-actions">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn ${opts.danger!==false?'danger-solid':'primary'}" id="cfmYes">${esc(opts.yes||"Delete")}</button>
+    </div>`);
+  document.getElementById("cfmYes").onclick=()=>{ closeModal(); onYes(); };
+}
+
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+/* ---------- Actions ---------- */
+function addSampleDialog(){
+  openModal(`
+    <h3>Add sample</h3>
+    <div class="row"><label>Sample name</label><input type="text" id="mName" placeholder="e.g. Sample 1 / Batch A-03"></div>
+    <div class="row"><label>Note (optional)</label><input type="text" id="mNote" placeholder="e.g. 2 mg/mL, pH 7.4"></div>
+    <p class="hint">Tip: add several at once, separated by commas.</p>
+    <div class="modal-actions">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn primary" id="mSave">Add</button>
+    </div>`);
+  const go=()=>{
+    const raw=document.getElementById("mName").value.trim();
+    const note=document.getElementById("mNote").value.trim();
+    if(!raw) return;
+    const names=raw.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
+    const p=active();
+    names.forEach(n=> p.samples.push({id:uid(),name:n,note:names.length===1?note:""}));
+    closeModal(); render(); toast(names.length>1?names.length+" samples added":"Sample added");
+  };
+  document.getElementById("mSave").onclick=go;
+  document.getElementById("mName").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();go();} });
+}
+
+function editSampleDialog(sid){
+  const p=active(); const s=p.samples.find(x=>x.id===sid); if(!s) return;
+  openModal(`
+    <h3>Edit sample</h3>
+    <div class="row"><label>Sample name</label><input type="text" id="mName" value="${esc(s.name)}"></div>
+    <div class="row"><label>Note</label><input type="text" id="mNote" value="${esc(s.note||'')}"></div>
+    <div class="modal-actions">
+      <button class="btn danger" id="mDel">🗑 Delete</button>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn primary" id="mSave">Save</button>
+    </div>`);
+  document.getElementById("mSave").onclick=()=>{
+    const n=document.getElementById("mName").value.trim(); if(!n) return;
+    s.name=n; s.note=document.getElementById("mNote").value.trim();
+    closeModal(); render();
+  };
+  document.getElementById("mDel").onclick=()=>{ closeModal(); deleteSample(sid); };
+}
+
+function addExperimentDialog(){
+  const p=active();
+  const groups=experimentGroups(p).filter(Boolean);
+  openModal(`
+    <h3>Add experiment</h3>
+    <div class="row"><label>Experiment name (becomes a column)</label><input type="text" id="mName" placeholder="e.g. caDNAno design"></div>
+    <div class="row"><label>Group (optional — bundles related experiments)</label>
+      <input type="text" id="mGroup" list="grpList" placeholder="e.g. Characterisation">
+      <datalist id="grpList">${groups.map(g=>`<option value="${esc(g)}">`).join("")}</datalist>
+    </div>
+    <p class="hint">Tip: add several columns at once, separated by commas.</p>
+    <div class="modal-actions">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn primary" id="mSave">Add</button>
+    </div>`);
+  const go=()=>{
+    const raw=document.getElementById("mName").value.trim();
+    const grp=document.getElementById("mGroup").value.trim();
+    if(!raw) return;
+    const names=raw.split(/,+/).map(x=>x.trim()).filter(Boolean);
+    names.forEach(n=> p.experiments.push({id:uid(),name:n,group:grp}));
+    closeModal(); render(); toast(names.length>1?names.length+" experiments added":"Experiment added");
+  };
+  document.getElementById("mSave").onclick=go;
+  document.getElementById("mName").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();go();} });
+}
+
+function editExperimentDialog(eid){
+  const p=active(); const e=p.experiments.find(x=>x.id===eid); if(!e) return;
+  const groups=experimentGroups(p).filter(Boolean);
+  openModal(`
+    <h3>Edit experiment</h3>
+    <div class="row"><label>Name</label><input type="text" id="mName" value="${esc(e.name)}"></div>
+    <div class="row"><label>Group</label>
+      <input type="text" id="mGroup" list="grpList" value="${esc(e.group||'')}">
+      <datalist id="grpList">${groups.map(g=>`<option value="${esc(g)}">`).join("")}</datalist>
+    </div>
+    <div class="modal-actions">
+      <button class="btn danger" id="mDel">🗑 Delete column</button>
+      <span style="flex:1"></span>
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn primary" id="mSave">Save</button>
+    </div>`);
+  document.getElementById("mSave").onclick=()=>{
+    const n=document.getElementById("mName").value.trim(); if(!n) return;
+    e.name=n; e.group=document.getElementById("mGroup").value.trim();
+    closeModal(); render();
+  };
+  document.getElementById("mDel").onclick=()=>{ closeModal(); deleteExperiment(eid); };
+}
+
+function deleteSample(sid){
+  const p=active();
+  const s=p.samples.find(x=>x.id===sid); if(!s) return;
+  confirmModal(`Delete sample "${s.name}" and all its data?`, ()=>{
+    p.samples=p.samples.filter(x=>x.id!==sid);
+    Object.keys(p.data).forEach(k=>{ if(k.startsWith(sid+"|")) delete p.data[k]; });
+    if(selectedSampleId===sid) selectedSampleId=null;
+    render(); toast("Sample deleted");
+  });
+}
+function deleteExperiment(eid){
+  const p=active();
+  const e=p.experiments.find(x=>x.id===eid); if(!e) return;
+  confirmModal(`Delete experiment "${e.name}" and all its data?`, ()=>{
+    p.experiments=p.experiments.filter(x=>x.id!==eid);
+    Object.keys(p.data).forEach(k=>{ if(k.endsWith("|"+eid)) delete p.data[k]; });
+    if(selectedExpId===eid) selectedExpId=null;
+    render(); toast("Experiment deleted");
+  });
+}
+
+/* ---------- Project actions ---------- */
+function addProject(){
+  openModal(`
+    <h3>New project</h3>
+    <div class="row"><label>Project name</label><input type="text" id="mName" placeholder="e.g. ProjectA"></div>
+    <div class="modal-actions"><button class="btn" data-close>Cancel</button><button class="btn primary" id="mSave">Create</button></div>`);
+  const go=()=>{
+    const n=document.getElementById("mName").value.trim()||"New Project";
+    const p=blankProject(n); db.projects.push(p); db.activeId=p.id; selectedSampleId=null; selectedExpId=null; filter="__all__";
+    closeModal(); render(); toast("Project created");
+  };
+  document.getElementById("mSave").onclick=go;
+  document.getElementById("mName").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();go();} });
+}
+function renameProject(){
+  const p=active();
+  openModal(`
+    <h3>Rename project</h3>
+    <div class="row"><label>Project name</label><input type="text" id="mName" value="${esc(p.name)}"></div>
+    <div class="modal-actions"><button class="btn" data-close>Cancel</button><button class="btn primary" id="mSave">Save</button></div>`);
+  document.getElementById("mSave").onclick=()=>{
+    const n=document.getElementById("mName").value.trim(); if(!n) return;
+    p.name=n; closeModal(); render();
+  };
+}
+function deleteProject(){
+  if(db.projects.length<=1){ toast("Keep at least one project."); return; }
+  const p=active();
+  confirmModal(`Delete project "${p.name}" and all its data?`, ()=>{
+    db.projects=db.projects.filter(x=>x.id!==p.id);
+    db.activeId=db.projects[0].id; selectedSampleId=null; selectedExpId=null; filter="__all__";
+    render(); toast("Project deleted");
+  });
+}
+
+/* ---------- Export / Import ---------- */
+/* ---------- Save / Load full data file (real file on the user's computer) ---------- */
+function saveToFile(){
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob), a=document.createElement("a");
+  const stamp=new Date().toISOString().slice(0,10);
+  a.href=url; a.download=`labtrack-data-${stamp}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast("Saved to file");
+}
+function loadFromFile(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    let d;
+    try{ d=JSON.parse(reader.result); }catch(_){ toast("⚠ That file isn't a valid LabTrack data file."); return; }
+    if(!d || !d.projects){ toast("⚠ That file isn't a valid LabTrack data file."); return; }
+    confirmModal("Loading this file will replace the data currently in the app. Save your current data to a file first if you want to keep it. Continue?", ()=>{
+      db=d; if(!db.activeId || !active()) db.activeId=db.projects[0].id;
+      selectedSampleId=null; selectedExpId=null; filter="__all__";
+      render(); toast("Data loaded from file");
+    }, {title:"Load data file", yes:"Replace", danger:true});
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- Excel (.xlsx) export — self-contained, no external library ---------- */
+function crc32(bytes){
+  let crc=-1;
+  for(let i=0;i<bytes.length;i++){
+    let c=(crc ^ bytes[i]) & 0xff;
+    for(let k=0;k<8;k++) c = (c & 1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1);
+    crc = (crc>>>8) ^ c;
+  }
+  return (crc ^ -1) >>> 0;
+}
+function makeXlsx(sheetName, matrix){
+  // matrix: array of rows, each row an array of strings ("" = blank cell)
+  const colName=n=>{ let s=""; n++; while(n>0){ let r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=Math.floor((n-1)/26);} return s; };
+  let sd="";
+  matrix.forEach((row,ri)=>{
+    let cells="";
+    row.forEach((val,ci)=>{
+      if(val==="" || val==null) return; // omit blank cells
+      cells+=`<c r="${colName(ci)}${ri+1}" t="inlineStr"><is><t xml:space="preserve">${esc(val)}</t></is></c>`;
+    });
+    sd+=`<row r="${ri+1}">${cells}</row>`;
+  });
+  const files=[
+    ["[Content_Types].xml",
+     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`],
+    ["_rels/.rels",
+     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ["xl/workbook.xml",
+     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${esc(sheetName).slice(0,31)}" sheetId="1" r:id="rId1"/></sheets></workbook>`],
+    ["xl/_rels/workbook.xml.rels",
+     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`],
+    ["xl/worksheets/sheet1.xml",
+     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sd}</sheetData></worksheet>`]
+  ];
+  // Build a STORE (uncompressed) ZIP
+  const enc=new TextEncoder();
+  const u16=n=>[n&0xff,(n>>8)&0xff];
+  const u32=n=>[n&0xff,(n>>8)&0xff,(n>>16)&0xff,(n>>24)&0xff];
+  const chunks=[]; const central=[]; let offset=0;
+  for(const [name,str] of files){
+    const nameB=enc.encode(name), dataB=enc.encode(str), crc=crc32(dataB), sz=dataB.length;
+    const local=new Uint8Array([].concat(u32(0x04034b50),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(sz),u32(sz),u16(nameB.length),u16(0)));
+    chunks.push(local,nameB,dataB);
+    central.push(new Uint8Array([].concat(u32(0x02014b50),u16(20),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(sz),u32(sz),u16(nameB.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset))),nameB);
+    offset+=local.length+nameB.length+dataB.length;
+  }
+  const cdStart=offset; let cdSize=0;
+  for(const c of central){ chunks.push(c); cdSize+=c.length; }
+  chunks.push(new Uint8Array([].concat(u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(cdSize),u32(cdStart),u16(0))));
+  const total=chunks.reduce((a,c)=>a+c.length,0), out=new Uint8Array(total); let p=0;
+  for(const c of chunks){ out.set(c,p); p+=c.length; }
+  return out;
+}
+function exportExcel(){
+  const p=active();
+  if(p.samples.length===0 || p.experiments.length===0){ toast("Add samples and experiments first."); return; }
+  const header=["Sample"].concat(p.experiments.map(e=> e.group ? (e.group+" / "+e.name) : e.name));
+  const rows=[header];
+  p.samples.forEach(s=>{
+    const row=[s.name];
+    p.experiments.forEach(e=> row.push(has(p,s.id,e.id) ? "x" : ""));
+    rows.push(row);
+  });
+  const bytes=makeXlsx(p.name, rows);
+  const blob=new Blob([bytes],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const url=URL.createObjectURL(blob), a=document.createElement("a");
+  const stamp=new Date().toISOString().slice(0,10);
+  a.href=url; a.download=`${p.name.replace(/[^\w\-]+/g,"_")}-${stamp}.xlsx`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast("Excel downloaded");
+}
+
+/* ---------- Event wiring ---------- */
+document.getElementById("projectSelect").onchange=e=>{ db.activeId=e.target.value; selectedSampleId=null; selectedExpId=null; filter="__all__"; render(); };
+document.getElementById("addProjectBtn").onclick=addProject;
+document.getElementById("renameProjectBtn").onclick=renameProject;
+document.getElementById("delProjectBtn").onclick=deleteProject;
+document.getElementById("addSampleBtn").onclick=addSampleDialog;
+document.getElementById("addExpBtn").onclick=addExperimentDialog;
+document.getElementById("emptyAddSample").onclick=addSampleDialog;
+document.getElementById("emptyAddExp").onclick=addExperimentDialog;
+document.getElementById("filterSelect").onchange=e=>{ filter=e.target.value; renderTable(); };
+document.getElementById("missingBtn").onclick=()=>openMissingReport('sample');
+document.getElementById("excelBtn").onclick=exportExcel;
+document.getElementById("saveFileBtn").onclick=saveToFile;
+document.getElementById("loadFileBtn").onclick=()=>document.getElementById("importFile").click();
+document.getElementById("importFile").onchange=e=>{ if(e.target.files[0]) loadFromFile(e.target.files[0]); e.target.value=""; };
+document.getElementById("aboutBtn").onclick=openAbout;
+document.getElementById("themeBtn").onclick=()=>{ db.theme=(db.theme==="light"?"dark":"light"); render(); };
+document.getElementById("overlay").onclick=e=>{ if(e.target.id==="overlay") closeModal(); };
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
+
+// Delegated clicks on the grid
+document.getElementById("grid").addEventListener("click",e=>{
+  const tgl=e.target.closest("[data-toggle]");
+  if(tgl){
+    const [sid,eid]=tgl.getAttribute("data-toggle").split("::");
+    const p=active(); setHas(p,sid,eid,!has(p,sid,eid));
+    render(); return;
+  }
+  const delExp=e.target.closest("[data-del-exp]");
+  if(delExp){ deleteExperiment(delExp.getAttribute("data-del-exp")); return; }
+  const delSample=e.target.closest("[data-del-sample]");
+  if(delSample){ e.stopPropagation(); deleteSample(delSample.getAttribute("data-del-sample")); return; }
+  const expHead=e.target.closest(".exp-name");
+  if(expHead){
+    const eid=expHead.closest("[data-eid]").getAttribute("data-eid");
+    selectedExpId = selectedExpId===eid ? null : eid;
+    selectedSampleId=null;
+    render(); return;
+  }
+  const open=e.target.closest("[data-open]");
+  if(open){
+    const sid=open.getAttribute("data-open");
+    selectedSampleId = selectedSampleId===sid ? null : sid;
+    selectedExpId=null;
+    render(); return;
+  }
+});
+
+/* Drag-and-drop to reorder sample rows */
+let dragSrcId=null;
+const gridEl=document.getElementById("grid");
+function clearDropMarks(){ gridEl.querySelectorAll("tr.drop-above,tr.drop-below").forEach(x=>x.classList.remove("drop-above","drop-below")); }
+gridEl.addEventListener("dragstart",e=>{
+  const cell=e.target.closest(".sample-cell"); if(!cell) return;
+  const tr=cell.closest("tr[data-sid]"); if(!tr) return;
+  dragSrcId=tr.getAttribute("data-sid");
+  e.dataTransfer.effectAllowed="move";
+  try{ e.dataTransfer.setData("text/plain", dragSrcId); }catch(_){}
+  tr.classList.add("dragging");
+});
+gridEl.addEventListener("dragover",e=>{
+  if(!dragSrcId) return;
+  e.preventDefault(); e.dataTransfer.dropEffect="move";
+  const tr=e.target.closest("tr[data-sid]"); clearDropMarks();
+  if(tr && tr.getAttribute("data-sid")!==dragSrcId){
+    const r=tr.getBoundingClientRect();
+    tr.classList.add((e.clientY-r.top) < r.height/2 ? "drop-above":"drop-below");
+  }
+});
+gridEl.addEventListener("drop",e=>{
+  if(!dragSrcId) return;
+  e.preventDefault();
+  const tr=e.target.closest("tr[data-sid]");
+  const p=active();
+  if(tr){
+    const targetId=tr.getAttribute("data-sid");
+    if(targetId!==dragSrcId){
+      const r=tr.getBoundingClientRect();
+      const above=(e.clientY-r.top) < r.height/2;
+      const from=p.samples.findIndex(s=>s.id===dragSrcId);
+      const moved=p.samples.splice(from,1)[0];
+      let to=p.samples.findIndex(s=>s.id===targetId);
+      if(!above) to+=1;
+      p.samples.splice(to,0,moved);
+      render();
+    }
+  }
+  dragSrcId=null; clearDropMarks();
+});
+gridEl.addEventListener("dragend",()=>{
+  dragSrcId=null; clearDropMarks();
+  gridEl.querySelectorAll("tr.dragging").forEach(x=>x.classList.remove("dragging"));
+});
+
+// Delegated clicks in drawer
+document.getElementById("drawerInner").addEventListener("click",e=>{
+  if(e.target.id==="drawerClose"){ selectedSampleId=null; selectedExpId=null; render(); return; }
+  if(e.target.id==="editSampleBtn"){ editSampleDialog(selectedSampleId); return; }
+  if(e.target.id==="sampleMissingBtn"){ openMissingReport('sample'); return; }
+  if(e.target.id==="editExpBtn"){ editExperimentDialog(selectedExpId); return; }
+  if(e.target.id==="expMissingBtn"){ openMissingReport('exp'); return; }
+  const tgl=e.target.closest("[data-toggle]");
+  if(tgl){
+    const [sid,eid]=tgl.getAttribute("data-toggle").split("::");
+    const p=active(); setHas(p,sid,eid,!has(p,sid,eid));
+    render(); return;
+  }
+});
+
+/* ---------- Go ---------- */
+render();
+</script>
+</body>
+</html>
