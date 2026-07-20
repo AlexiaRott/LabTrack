@@ -5,12 +5,11 @@ type: software
 authors:
   - family-names: Rottensteiner
     given-names: Alexia
-    # orcid: "https://orcid.org/0000-0000-0000-0000"   # <- add your ORCID if you have one
-    # affiliation: "Your institution"                    # <- optional
+    orcid: "https://orcid.org/0000-0003-3714-5417"
 repository-code: "https://github.com/AlexiaRott/LabTrack"
 url: "https://github.com/AlexiaRott/LabTrack"
 abstract: >-
-  LabTrack is a lightweight, offline, single-file web tool for tracking
+  LabTrack is an easy, offline, single-file web tool for tracking
   experimental progress across samples and experiments. Samples are rows and
   experiments are columns; users tick a box once data is collected, and the
   tool reports what is still missing per sample and per experiment.
@@ -18,7 +17,7 @@ keywords:
   - experiment tracking
   - laboratory management
   - research software
-  - DNA origami
+  - DNA nanotechnology
   - characterisation
 version: "1.0"
 date-released: "2026-07-20"
